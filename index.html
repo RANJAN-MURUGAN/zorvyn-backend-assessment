@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zorvyn Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white flex items-center justify-center h-screen">
+
+    <div class="bg-gray-800 p-8 rounded-xl shadow-2xl w-96 border border-gray-700">
+        <h2 class="text-2xl font-bold text-center mb-6 text-blue-400">Finance Summary</h2>
+        
+        <div class="space-y-4">
+            <div class="flex justify-between bg-gray-700 p-3 rounded-lg">
+                <span class="text-gray-300">Total Income</span>
+                <span id="income" class="font-bold text-green-400">$0.00</span>
+            </div>
+            
+            <div class="flex justify-between bg-gray-700 p-3 rounded-lg">
+                <span class="text-gray-300">Total Expenses</span>
+                <span id="expense" class="font-bold text-red-400">$0.00</span>
+            </div>
+
+            <div class="border-t border-gray-600 my-4"></div>
+
+            <div class="flex justify-between bg-gray-900 p-4 rounded-lg border border-gray-600">
+                <span class="text-gray-400 uppercase tracking-wider text-sm font-bold">Net Balance</span>
+                <span id="balance" class="font-bold text-xl text-white">$0.00</span>
+            </div>
+        </div>
+
+        <button onclick="fetchData()" class="mt-6 w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded transition duration-200">
+            Refresh Data
+        </button>
+    </div>
+
+    <script>
+        async function fetchData() {
+            try {
+                // Fetching data from your FastAPI backend
+                const response = await fetch('http://127.0.0.1:8000/dashboard/summary', {
+                    headers: { 'x-user-role': 'Viewer' } // Passing our mock auth header
+                });
+                const data = await response.json();
+
+                // Updating the HTML with the live data
+                document.getElementById('income').innerText = '$' + data.total_income.toFixed(2);
+                document.getElementById('expense').innerText = '$' + data.total_expense.toFixed(2);
+                document.getElementById('balance').innerText = '$' + data.net_balance.toFixed(2);
+                
+                // Make balance red if negative
+                if(data.net_balance < 0) {
+                    document.getElementById('balance').classList.replace('text-white', 'text-red-400');
+                } else {
+                    document.getElementById('balance').classList.replace('text-red-400', 'text-white');
+                }
+            } catch (error) {
+                alert("Error fetching data. Is your FastAPI server running?");
+            }
+        }
+
+        // Load data automatically when the page opens
+        fetchData();
+    </script>
+</body>
+</html>
