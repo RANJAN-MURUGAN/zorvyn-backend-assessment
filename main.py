@@ -1,10 +1,17 @@
+import os
+import sys
 from typing import Optional, List
 from enum import Enum
+
+# --- VERCEL PATH FIX ---
+# This ensures Python can see models.py and database.py in the same folder
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 from fastapi import FastAPI, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
 
-# CRITICAL FIX: Use relative imports for Vercel deployment
+# Relative imports to handle Vercel's folder structure
 try:
     from . import models, schemas
     from .database import engine, get_db
@@ -12,7 +19,7 @@ except ImportError:
     import models, schemas
     from database import engine, get_db
 
-# Create the database tables (SQLite will run in-memory or as per database.py)
+# Create the database tables in RAM
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Zorvyn Finance API", version="1.0.0")
@@ -24,7 +31,6 @@ class UserRole(str, Enum):
     Viewer = "Viewer"
 
 def role_checker(allowed_roles: List[str]):
-    # Note: Header names are case-insensitive in FastAPI
     def check_role(x_user_role: UserRole = Header(default=UserRole.Viewer)):
         if x_user_role.value not in allowed_roles:
             raise HTTPException(status_code=403, detail="Access Denied: Insufficient Permissions")
@@ -102,15 +108,12 @@ def get_dashboard_summary(
     db: Session = Depends(get_db),
     role: str = Depends(role_checker(["Admin", "Analyst", "Viewer"]))
 ):
-    # Calculate Income and Expense
     income = db.query(func.sum(models.Record.amount)).filter(models.Record.type == "Income").scalar() or 0.0
     expense = db.query(func.sum(models.Record.amount)).filter(models.Record.type == "Expense").scalar() or 0.0
     
-    # Calculate Category Totals
     category_query = db.query(models.Record.category, func.sum(models.Record.amount)).group_by(models.Record.category).all()
     category_totals = {cat: amt for cat, amt in category_query}
     
-    # Get Last 5 Transactions
     recent_activity = db.query(models.Record).order_by(desc(models.Record.id)).limit(5).all()
     
     return schemas.DashboardResponse(
