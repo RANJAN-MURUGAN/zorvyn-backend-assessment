@@ -1,12 +1,18 @@
-from typing import Optional
+from typing import Optional, List
 from enum import Enum
 from fastapi import FastAPI, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
-import models, schemas
-from database import engine, get_db
 
-# Create the database tables
+# CRITICAL FIX: Use relative imports for Vercel deployment
+try:
+    from . import models, schemas
+    from .database import engine, get_db
+except ImportError:
+    import models, schemas
+    from database import engine, get_db
+
+# Create the database tables (SQLite will run in-memory or as per database.py)
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Zorvyn Finance API", version="1.0.0")
@@ -17,7 +23,8 @@ class UserRole(str, Enum):
     Analyst = "Analyst"
     Viewer = "Viewer"
 
-def role_checker(allowed_roles: list[str]):
+def role_checker(allowed_roles: List[str]):
+    # Note: Header names are case-insensitive in FastAPI
     def check_role(x_user_role: UserRole = Header(default=UserRole.Viewer)):
         if x_user_role.value not in allowed_roles:
             raise HTTPException(status_code=403, detail="Access Denied: Insufficient Permissions")
@@ -40,7 +47,7 @@ def create_record(
     db.refresh(db_record)
     return db_record
 
-@app.get("/records/", response_model=list[schemas.RecordResponse])
+@app.get("/records/", response_model=List[schemas.RecordResponse])
 def get_records(
     category: Optional[str] = None,
     type: Optional[str] = None,
